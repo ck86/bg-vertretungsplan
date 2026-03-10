@@ -1,0 +1,22 @@
+# Antigravity Rules
+
+This file is explicitly for the Antigravity agent. When working on this project (`bg-vertretungsplan`), adhere to the following stack and guidelines:
+
+## Tech Stack
+- Framework: TanStack Start
+- Library: React 19
+- Styling: Tailwind CSS 4
+- Build Tool: Vite
+- Language: TypeScript
+
+## Guidelines
+1. **Routing:** Follow TanStack Router file-based routing (`src/routes`).
+2. **State and Data:** Use TanStack Query with integrated route loaders, or Server Functions (`createServerFn()`) for server-side logic tightly coupled with the frontend.
+3. **Styling:** Rely strictly on Tailwind CSS utility classes. Avoid creating custom CSS unless absolutely necessary.
+4. **Testing:** Vitest is used for testing. Tests should be closely co-located or maintained logically.
+
+## Specific Antigravity Instructions
+- Ensure you do not add legacy React patterns (like older `useEffect` data fetching loops without considering Loaders/TanStack Query).
+- Prioritize concise, functional components using modern hooks.
+- For AI-assisted code generation, do not mix frameworks; stay within the TanStack ecosystem as established.
+- **Reference `DEVELOPMENT_GUIDELINES.md` for specific pattern examples** regarding data loading, server functions, and component styling.
