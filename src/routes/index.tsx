@@ -103,6 +103,8 @@ const columns = [
 type LessonPlanPayload = {
   date: string | null
   rows: LessonPlanRow[]
+  sourceUrl: string | null
+  isToday: boolean
 }
 
 function HomePage() {
@@ -239,6 +241,19 @@ function HomePage() {
                 nicht gespeichert.
               </p>
             )}
+            {plan && plan.isToday && plan.sourceUrl && (
+              <div className="mt-3 flex flex-col gap-1 text-sm text-[var(--sea-ink-soft)]">
+                <span>Original-PDF für heute ohne Filter im Browser öffnen:</span>
+                <a
+                  href={`${plan.sourceUrl}?t=${Date.now()}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--lagoon-deep)] border border-[var(--lagoon-deep)] bg-transparent hover:bg-[rgba(79,184,178,0.08)] transition-colors w-max"
+                >
+                  Original-PDF öffnen
+                </a>
+              </div>
+            )}
             {formattedDate && (
               <p className="text-base text-[var(--sea-ink-soft)] flex items-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -309,14 +324,19 @@ function HomePage() {
         <>
           {/* Class filter */}
           <div className="rise-in mb-4" style={{ animationDelay: '80ms' }}>
-            <div className="flex items-center gap-3">
-              <label
-                htmlFor="lesson-plan-class-filter"
-                className="text-sm font-medium text-[var(--sea-ink-soft)]"
-              >
-                Klasse filtern:
-              </label>
-              <div className="relative">
+            <div className="flex items-center justify-between gap-3 w-full">
+              <div className="flex flex-col">
+                <label
+                  htmlFor="lesson-plan-class-filter"
+                  className="text-sm font-medium text-[var(--sea-ink-soft)]"
+                >
+                  Klasse filtern:
+                </label>
+                <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
+                  Falls deine Klasse hier nicht erscheint, gibt es aktuell keine Einträge.
+                </p>
+              </div>
+              <div className="relative ml-auto">
                 <select
                   id="lesson-plan-class-filter"
                   value={selectedClass}

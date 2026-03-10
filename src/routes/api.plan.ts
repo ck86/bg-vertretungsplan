@@ -75,6 +75,8 @@ export const Route = createFileRoute('/api/plan')({
           const payload = {
             date: chosen.date ? chosen.date.toISOString() : null,
             rows: chosen.rows,
+            sourceUrl: chosen.sourceUrl,
+            isToday: todaysPlan != null && chosen === todaysPlan,
           }
 
           return new Response(JSON.stringify(payload, null, 2), {
