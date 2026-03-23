@@ -194,7 +194,7 @@ Students can enable browser push for a selected class when VAPID keys and a cron
 
 **Database:** run [`src/db/neon-init.sql`](src/db/neon-init.sql) once in the Neon SQL Editor to create tables.
 
-**Cron:** On Vercel, [`vercel.json`](vercel.json) schedules `GET /api/cron/check-plan-updates` every five minutes during **UTC hours 4–13** (a coarse envelope around school hours). The handler only runs the plan check when the current time is **06:00–14:59 (Europe/Berlin)** so daylight saving stays correct. Set **`CRON_SECRET`** in the project; Vercel sends it automatically as `Authorization: Bearer …` for cron invocations.
+**Cron:** On Vercel, [`vercel.json`](vercel.json) schedules `GET /api/cron/check-plan-updates` once per day at **04:00 UTC** (`0 4 * * *`). This assumes UTC directly and does not apply an extra Berlin-time runtime filter. Set **`CRON_SECRET`** in the project; Vercel sends it automatically as `Authorization: Bearer …` for cron invocations.
 
 For other hosts, call manually:
 
