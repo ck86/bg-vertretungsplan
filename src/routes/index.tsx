@@ -111,24 +111,41 @@ const columns = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type LessonPlanPayload = {
+type LessonPlanDay = {
   date: string | null;
   rows: LessonPlanRow[];
   sourceUrl: string | null;
   isToday: boolean;
 };
 
+type PlansApiResponse = {
+  plans: LessonPlanDay[];
+  defaultIndex: number;
+};
+
+function formatPlanSwitcherLabel(day: LessonPlanDay): string {
+  const datePart = day.date
+    ? new Date(day.date).toLocaleDateString("de-DE", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+      })
+    : "Datum unbekannt";
+  return day.isToday ? `${datePart} · Heute` : datePart;
+}
+
 function HomePage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [plan, setPlan] = useState<LessonPlanPayload | null>(null);
+  const [plansData, setPlansData] = useState<PlansApiResponse | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const loadPlan = async (pwd: string) => {
     const trimmed = pwd.trim();
     if (!trimmed) {
       setError("Bitte gib das Passwort ein.");
-      setPlan(null);
+      setPlansData(null);
       return;
     }
 
@@ -148,8 +165,16 @@ function HomePage() {
         throw new Error(message || "Der Plan konnte nicht geladen werden.");
       }
 
-      const result: LessonPlanPayload = await response.json();
-      setPlan(result);
+      const result: PlansApiResponse = await response.json();
+      if (!Array.isArray(result.plans) || result.plans.length === 0) {
+        throw new Error("Der Plan enthielt keine gültigen Daten.");
+      }
+      const safeDefault = Math.min(
+        Math.max(0, result.defaultIndex),
+        result.plans.length - 1,
+      );
+      setPlansData(result);
+      setActiveIndex(safeDefault);
       // Persist successful password locally so users don't have to re-enter it.
       try {
         window.localStorage.setItem("planPassword", trimmed);
@@ -162,7 +187,7 @@ function HomePage() {
           ? err.message
           : "Der Plan konnte nicht geladen werden.",
       );
-      setPlan(null);
+      setPlansData(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -191,7 +216,13 @@ function HomePage() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [selectedClass, setSelectedClass] = useState("");
 
-  const rows = useMemo(() => plan?.rows ?? [], [plan]);
+  const activePlan = useMemo(() => {
+    if (!plansData?.plans.length) return null;
+    const idx = Math.min(activeIndex, plansData.plans.length - 1);
+    return plansData.plans[idx] ?? null;
+  }, [plansData, activeIndex]);
+
+  const rows = useMemo(() => activePlan?.rows ?? [], [activePlan]);
 
   const classOptions = useMemo(() => {
     const set = new Set<string>();
@@ -219,8 +250,8 @@ function HomePage() {
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const formattedDate = plan?.date
-    ? new Date(plan.date).toLocaleDateString("de-DE", {
+  const formattedDate = activePlan?.date
+    ? new Date(activePlan.date).toLocaleDateString("de-DE", {
         weekday: "long",
         day: "2-digit",
         month: "long",
@@ -242,11 +273,11 @@ function HomePage() {
   return (
     <main>
       {/* Header Section */}
-      <HomeHeader plan={plan} formattedDate={formattedDate} />
+      <HomeHeader plan={activePlan} formattedDate={formattedDate} />
 
       <div className="page-wrap">
         {/* Password form (hidden once a plan is successfully loaded) */}
-        {!plan && (
+        {!plansData && (
           <section className="rise-in mb-6" style={{ animationDelay: "60ms" }}>
             <form
               onSubmit={handleSubmit}
@@ -282,8 +313,45 @@ function HomePage() {
         )}
 
         {/* Class filter & table – only show after plan is loaded */}
-        {plan && (
+        {plansData && activePlan && (
           <>
+            {plansData.plans.length > 1 && (
+              <div
+                className="rise-in mb-4"
+                style={{ animationDelay: "72ms" }}
+              >
+                <p className="text-sm font-medium text-[var(--sea-ink-soft)] mb-2">
+                  Tag wählen
+                </p>
+                <div
+                  role="tablist"
+                  aria-label="Vertretungsplan nach Tag"
+                  className="inline-flex flex-wrap gap-1 p-1 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)]"
+                >
+                  {plansData.plans.map((day, i) => {
+                    const selected = i === activeIndex;
+                    return (
+                      <button
+                        key={`${day.date ?? "unknown"}-${i}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        tabIndex={selected ? 0 : -1}
+                        onClick={() => setActiveIndex(i)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          selected
+                            ? "bg-[var(--lagoon-deep)] text-white shadow-sm"
+                            : "text-[var(--sea-ink)] hover:bg-[rgba(79,184,178,0.12)]"
+                        }`}
+                      >
+                        {formatPlanSwitcherLabel(day)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Class filter */}
             <div className="rise-in mb-4" style={{ animationDelay: "80ms" }}>
               <div className="flex items-center justify-between gap-3 w-full">
@@ -333,7 +401,7 @@ function HomePage() {
                   <div className="flex gap-3 flex-wrap justify-end">
                     <div className="island-shell rounded-xl px-4 py-2 flex items-center gap-2">
                       <span className="text-2xl font-bold text-[var(--lagoon-deep)]">
-                        {plan.rows.length}
+                        {activePlan.rows.length}
                       </span>
                       <span className="text-xs text-[var(--sea-ink-soft)] font-medium leading-tight">
                         Einträge

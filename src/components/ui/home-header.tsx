@@ -51,21 +51,23 @@ export function HomeHeader({
           )}
         </div>
 
-        {plan && (
+        {plan && plan.sourceUrl && (
           <div className="flex flex-col items-end gap-2">
-            {plan.isToday && plan.sourceUrl && (
-              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-sm text-[var(--sea-ink-soft)]">
-                <span>Original-PDF für heute ohne Filter im Browser öffnen:</span>
-                <a
-                  href={`${plan.sourceUrl}?t=${Date.now()}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--lagoon-deep)] border border-[var(--lagoon-deep)] bg-transparent hover:bg-[rgba(79,184,178,0.08)] transition-colors w-max"
-                >
-                  Original-PDF öffnen
-                </a>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-sm text-[var(--sea-ink-soft)]">
+              <span>
+                {plan.isToday
+                  ? 'Original-PDF für heute ohne Filter im Browser öffnen:'
+                  : 'Original-PDF für diesen Tag ohne Filter im Browser öffnen:'}
+              </span>
+              <a
+                href={`${plan.sourceUrl}?t=${Date.now()}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--lagoon-deep)] border border-[var(--lagoon-deep)] bg-transparent hover:bg-[rgba(79,184,178,0.08)] transition-colors w-max"
+              >
+                Original-PDF öffnen
+              </a>
+            </div>
           </div>
         )}
       </div>

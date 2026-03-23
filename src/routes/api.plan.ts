@@ -70,13 +70,30 @@ export const Route = createFileRoute('/api/plan')({
                 return new Date(b.date).getTime() - new Date(a.date).getTime()
               })[0] ?? successful[0]
 
-          const chosen = todaysPlan ?? fallbackPlan
+          const defaultChoice = todaysPlan ?? fallbackPlan
+
+          const sorted = successful.slice().sort((a, b) => {
+            if (!a.date && !b.date) return 0
+            if (!a.date) return 1
+            if (!b.date) return -1
+            return new Date(a.date).getTime() - new Date(b.date).getTime()
+          })
+
+          const defaultIndex = Math.max(
+            0,
+            sorted.findIndex(p => p === defaultChoice),
+          )
+
+          const plans = sorted.map(p => ({
+            date: p.date ? p.date.toISOString() : null,
+            rows: p.rows,
+            sourceUrl: p.sourceUrl,
+            isToday: pickByDate(p),
+          }))
 
           const payload = {
-            date: chosen.date ? chosen.date.toISOString() : null,
-            rows: chosen.rows,
-            sourceUrl: chosen.sourceUrl,
-            isToday: todaysPlan != null && chosen === todaysPlan,
+            plans,
+            defaultIndex,
           }
 
           return new Response(JSON.stringify(payload, null, 2), {
