@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPlanRouteImport } from './routes/api.plan'
+import { Route as ApiPushVapidPublicRouteImport } from './routes/api.push.vapid-public'
+import { Route as ApiPushUnsubscribeRouteImport } from './routes/api.push.unsubscribe'
+import { Route as ApiPushSubscribeRouteImport } from './routes/api.push.subscribe'
+import { Route as ApiCronCheckPlanUpdatesRouteImport } from './routes/api.cron.check-plan-updates'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +26,86 @@ const ApiPlanRoute = ApiPlanRouteImport.update({
   path: '/api/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPushVapidPublicRoute = ApiPushVapidPublicRouteImport.update({
+  id: '/api/push/vapid-public',
+  path: '/api/push/vapid-public',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPushUnsubscribeRoute = ApiPushUnsubscribeRouteImport.update({
+  id: '/api/push/unsubscribe',
+  path: '/api/push/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPushSubscribeRoute = ApiPushSubscribeRouteImport.update({
+  id: '/api/push/subscribe',
+  path: '/api/push/subscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronCheckPlanUpdatesRoute = ApiCronCheckPlanUpdatesRouteImport.update({
+  id: '/api/cron/check-plan-updates',
+  path: '/api/cron/check-plan-updates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/plan': typeof ApiPlanRoute
+  '/api/cron/check-plan-updates': typeof ApiCronCheckPlanUpdatesRoute
+  '/api/push/subscribe': typeof ApiPushSubscribeRoute
+  '/api/push/unsubscribe': typeof ApiPushUnsubscribeRoute
+  '/api/push/vapid-public': typeof ApiPushVapidPublicRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/plan': typeof ApiPlanRoute
+  '/api/cron/check-plan-updates': typeof ApiCronCheckPlanUpdatesRoute
+  '/api/push/subscribe': typeof ApiPushSubscribeRoute
+  '/api/push/unsubscribe': typeof ApiPushUnsubscribeRoute
+  '/api/push/vapid-public': typeof ApiPushVapidPublicRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/plan': typeof ApiPlanRoute
+  '/api/cron/check-plan-updates': typeof ApiCronCheckPlanUpdatesRoute
+  '/api/push/subscribe': typeof ApiPushSubscribeRoute
+  '/api/push/unsubscribe': typeof ApiPushUnsubscribeRoute
+  '/api/push/vapid-public': typeof ApiPushVapidPublicRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/plan'
+  fullPaths:
+    | '/'
+    | '/api/plan'
+    | '/api/cron/check-plan-updates'
+    | '/api/push/subscribe'
+    | '/api/push/unsubscribe'
+    | '/api/push/vapid-public'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/plan'
-  id: '__root__' | '/' | '/api/plan'
+  to:
+    | '/'
+    | '/api/plan'
+    | '/api/cron/check-plan-updates'
+    | '/api/push/subscribe'
+    | '/api/push/unsubscribe'
+    | '/api/push/vapid-public'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/plan'
+    | '/api/cron/check-plan-updates'
+    | '/api/push/subscribe'
+    | '/api/push/unsubscribe'
+    | '/api/push/vapid-public'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPlanRoute: typeof ApiPlanRoute
+  ApiCronCheckPlanUpdatesRoute: typeof ApiCronCheckPlanUpdatesRoute
+  ApiPushSubscribeRoute: typeof ApiPushSubscribeRoute
+  ApiPushUnsubscribeRoute: typeof ApiPushUnsubscribeRoute
+  ApiPushVapidPublicRoute: typeof ApiPushVapidPublicRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +124,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/push/vapid-public': {
+      id: '/api/push/vapid-public'
+      path: '/api/push/vapid-public'
+      fullPath: '/api/push/vapid-public'
+      preLoaderRoute: typeof ApiPushVapidPublicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/push/unsubscribe': {
+      id: '/api/push/unsubscribe'
+      path: '/api/push/unsubscribe'
+      fullPath: '/api/push/unsubscribe'
+      preLoaderRoute: typeof ApiPushUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/push/subscribe': {
+      id: '/api/push/subscribe'
+      path: '/api/push/subscribe'
+      fullPath: '/api/push/subscribe'
+      preLoaderRoute: typeof ApiPushSubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/check-plan-updates': {
+      id: '/api/cron/check-plan-updates'
+      path: '/api/cron/check-plan-updates'
+      fullPath: '/api/cron/check-plan-updates'
+      preLoaderRoute: typeof ApiCronCheckPlanUpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPlanRoute: ApiPlanRoute,
+  ApiCronCheckPlanUpdatesRoute: ApiCronCheckPlanUpdatesRoute,
+  ApiPushSubscribeRoute: ApiPushSubscribeRoute,
+  ApiPushUnsubscribeRoute: ApiPushUnsubscribeRoute,
+  ApiPushVapidPublicRoute: ApiPushVapidPublicRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

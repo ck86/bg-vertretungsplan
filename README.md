@@ -182,6 +182,26 @@ function PeopleComponent() {
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
+## Push notifications (class changes)
+
+Students can enable browser push for a selected class when VAPID keys and a cron job are configured. Copy [`.env.example`](.env.example) to `.env` locally (never commit secrets) and set:
+
+- **`PLAN_PDF_PASSWORD`** — same value as the school PDF password (used server-side by the checker; students do not send it when subscribing).
+- **`VAPID_*`** — from `npx web-push generate-vapid-keys`; **`VAPID_SUBJECT`** is usually `mailto:…`.
+- **`DATABASE_URL`** — Neon Postgres connection string from the Neon dashboard.
+- **`CRON_SECRET`** — long random string; required to call the checker endpoint.
+- **`PUBLIC_APP_URL`** (optional) — used as the notification click target.
+
+**Database:** run [`src/db/neon-init.sql`](src/db/neon-init.sql) once in the Neon SQL Editor to create tables.
+
+**Cron:** call the checker every few minutes (for example 5–15) with the bearer secret:
+
+```bash
+curl -sS -H "Authorization: Bearer YOUR_CRON_SECRET" "https://YOUR_HOST/api/cron/check-plan-updates"
+```
+
+Push subscriptions and per-class fingerprints are stored in Neon (PostgreSQL) over Drizzle’s Neon HTTP driver, which fits serverless and long cold starts.
+
 # Demo files
 
 Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.

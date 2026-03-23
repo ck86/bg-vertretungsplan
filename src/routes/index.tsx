@@ -11,6 +11,7 @@ import {
   type ColumnFiltersState,
   type SortingState,
 } from "@tanstack/react-table";
+import { PUSH_NOTIFY_CLASS_KEY, urlBase64ToUint8Array } from "#/lib/pushClient";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 // ─── Route ────────────────────────────────────────────────────────────────────
@@ -215,6 +216,46 @@ function HomePage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [selectedClass, setSelectedClass] = useState("");
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushActive, setPushActive] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setPushSupported("serviceWorker" in navigator && "PushManager" in window);
+    void navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* ignore */
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedClass || typeof window === "undefined") {
+      setPushActive(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        let stored: string | null = null;
+        try {
+          stored = window.localStorage.getItem(PUSH_NOTIFY_CLASS_KEY);
+        } catch {
+          stored = null;
+        }
+        if (!cancelled) {
+          setPushActive(!!sub && stored === selectedClass);
+        }
+      } catch {
+        if (!cancelled) setPushActive(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClass, plansData]);
 
   const activePlan = useMemo(() => {
     if (!plansData?.plans.length) return null;
@@ -261,13 +302,142 @@ function HomePage() {
 
   const rowCount = table.getFilteredRowModel().rows.length;
 
+  const cleanupPushSubscriptionForClass = async (classLabel: string) => {
+    if (typeof window === "undefined") return;
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(PUSH_NOTIFY_CLASS_KEY);
+    } catch {
+      return;
+    }
+    if (stored !== classLabel) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endpoint: sub.endpoint,
+            class: classLabel,
+          }),
+        });
+        await sub.unsubscribe();
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      window.localStorage.removeItem(PUSH_NOTIFY_CLASS_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const handleClassChange = (value: string) => {
+    const prev = selectedClass;
+    if (prev && prev !== value) {
+      void cleanupPushSubscriptionForClass(prev);
+    }
     setSelectedClass(value);
     setColumnFilters((prev) => {
       const withoutClass = prev.filter((f) => f.id !== "class");
       if (!value) return withoutClass;
       return [...withoutClass, { id: "class", value }];
     });
+  };
+
+  const handlePushToggle = async (enable: boolean) => {
+    if (!selectedClass || typeof window === "undefined") return;
+    setPushError(null);
+    setPushBusy(true);
+    try {
+      if (!enable) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await fetch("/api/push/unsubscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              endpoint: sub.endpoint,
+              class: selectedClass,
+            }),
+          });
+          await sub.unsubscribe();
+        }
+        try {
+          window.localStorage.removeItem(PUSH_NOTIFY_CLASS_KEY);
+        } catch {
+          /* ignore */
+        }
+        setPushActive(false);
+        return;
+      }
+
+      const vr = await fetch("/api/push/vapid-public");
+      if (!vr.ok) {
+        const j = (await vr.json().catch(() => null)) as { error?: string } | null;
+        setPushError(
+          j?.error ??
+            "Push ist auf diesem Server nicht eingerichtet (VAPID-Schlüssel fehlen).",
+        );
+        return;
+      }
+      const { publicKey } = (await vr.json()) as { publicKey: string };
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        setPushError(
+          "Benachrichtigungen wurden nicht erlaubt. Bitte in den Browser-Einstellungen aktivieren.",
+        );
+        return;
+      }
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await reg.update();
+      const ready = await navigator.serviceWorker.ready;
+      const sub = await ready.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+      });
+      const json = sub.toJSON();
+      if (!json.keys?.auth || !json.keys?.p256dh) {
+        setPushError("Push-Abo konnte nicht erstellt werden.");
+        return;
+      }
+      const sr = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          class: selectedClass,
+          subscription: {
+            endpoint: json.endpoint,
+            keys: {
+              p256dh: json.keys.p256dh,
+              auth: json.keys.auth,
+            },
+          },
+        }),
+      });
+      if (!sr.ok) {
+        const j = (await sr.json().catch(() => null)) as { error?: string } | null;
+        setPushError(j?.error ?? "Speichern des Abos ist fehlgeschlagen.");
+        await sub.unsubscribe().catch(() => {});
+        return;
+      }
+      try {
+        window.localStorage.setItem(PUSH_NOTIFY_CLASS_KEY, selectedClass);
+      } catch {
+        /* ignore */
+      }
+      setPushActive(true);
+    } catch (e) {
+      setPushError(
+        e instanceof Error ? e.message : "Push konnte nicht aktiviert werden.",
+      );
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   return (
@@ -425,6 +595,47 @@ function HomePage() {
                 </div>
               </div>
             </div>
+
+            {selectedClass && (
+              <div
+                className="rise-in mb-4 rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-3 sm:px-5 sm:py-4"
+                style={{ animationDelay: "100ms" }}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    id="plan-push-notify"
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-[var(--line)] text-[var(--lagoon-deep)] focus:ring-[var(--lagoon)]"
+                    checked={pushActive}
+                    disabled={pushBusy || !pushSupported}
+                    onChange={(e) => {
+                      void handlePushToggle(e.target.checked);
+                    }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <label
+                      htmlFor="plan-push-notify"
+                      className="text-sm font-medium text-[var(--sea-ink)] cursor-pointer"
+                    >
+                      Bei Änderungen für Klasse {selectedClass} per Push benachrichtigen
+                    </label>
+                    <p className="mt-1 text-xs text-[var(--sea-ink-soft)] leading-relaxed">
+                      Funktioniert auch, wenn du diese Seite schließt (je nach Gerät und
+                      Browser-Einstellungen). Auf dem Server müssen dafür VAPID-Schlüssel und
+                      ein regelmäßiger Cron-Job eingerichtet sein.
+                    </p>
+                    {!pushSupported && (
+                      <p className="mt-2 text-xs text-rose-600">
+                        Push wird von diesem Browser nicht unterstützt.
+                      </p>
+                    )}
+                    {pushError && (
+                      <p className="mt-2 text-sm text-rose-600">{pushError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Table */}
             <div
