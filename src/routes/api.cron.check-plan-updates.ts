@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { isWithinBerlinPlanWatchWindow } from '#/lib/berlinCronWindow'
 import { runPlanUpdateCheck } from '#/lib/runPlanUpdateCheck'
 
 function jsonResponse(body: unknown, status: number) {
@@ -25,6 +26,13 @@ export const Route = createFileRoute('/api/cron/check-plan-updates')({
 
         if (!process.env.PLAN_PDF_PASSWORD?.trim()) {
           return jsonResponse({ error: 'PLAN_PDF_PASSWORD ist nicht gesetzt.' }, 503)
+        }
+
+        if (!isWithinBerlinPlanWatchWindow()) {
+          return jsonResponse(
+            { skipped: true, reason: 'outside_berlin_window', window: '06:00–15:00 Europe/Berlin' },
+            200,
+          )
         }
 
         try {

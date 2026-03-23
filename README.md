@@ -194,11 +194,15 @@ Students can enable browser push for a selected class when VAPID keys and a cron
 
 **Database:** run [`src/db/neon-init.sql`](src/db/neon-init.sql) once in the Neon SQL Editor to create tables.
 
-**Cron:** call the checker every few minutes (for example 5–15) with the bearer secret:
+**Cron:** On Vercel, [`vercel.json`](vercel.json) schedules `GET /api/cron/check-plan-updates` every five minutes during **UTC hours 4–13** (a coarse envelope around school hours). The handler only runs the plan check when the current time is **06:00–14:59 (Europe/Berlin)** so daylight saving stays correct. Set **`CRON_SECRET`** in the project; Vercel sends it automatically as `Authorization: Bearer …` for cron invocations.
+
+For other hosts, call manually:
 
 ```bash
 curl -sS -H "Authorization: Bearer YOUR_CRON_SECRET" "https://YOUR_HOST/api/cron/check-plan-updates"
 ```
+
+**Note:** Vercel Hobby limits cron frequency (often once per day); more frequent crons need a paid plan.
 
 Push subscriptions and per-class fingerprints are stored in Neon (PostgreSQL) over Drizzle’s Neon HTTP driver, which fits serverless and long cold starts.
 
